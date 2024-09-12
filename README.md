@@ -2,4 +2,6 @@
 
 An example demonstrating Zig interacting with the DOM via JS.
 
-Compile with `zig build-lib zigdom.zig -target wasm32-freestanding -dynamic -OReleaseSmall`
+Forked from https://github.com/shritesh/zig-wasm-dom
+
+Compile with `zig build`
