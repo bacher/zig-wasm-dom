@@ -1,24 +1,31 @@
-const getString = function (ptr, len) {
+const zigdom = {
+  objects: [],
+  exports: undefined,
+};
+
+window.zigdom = zigdom;
+
+function getString(ptr, len) {
   const slice = zigdom.exports.memory.buffer.slice(ptr, ptr + len);
   const textDecoder = new TextDecoder();
   return textDecoder.decode(slice);
-};
+}
 
-const pushObject = function (object) {
+function pushObject(object) {
   return zigdom.objects.push(object);
-};
+}
 
-const getObject = function (objId) {
+function getObject(objId) {
   return zigdom.objects[objId - 1];
-};
+}
 
-const dispatch = function (eventId) {
+function dispatch(eventId) {
   return function () {
-    zigdom.exports.dispatchEvent(eventId);
+    zigdom.exports.dispatch_event(eventId);
   };
-};
+}
 
-const elementSetAttribute = function (
+function elementSetAttribute(
   node_id,
   name_ptr,
   name_len,
@@ -29,9 +36,14 @@ const elementSetAttribute = function (
   const attribute_name = getString(name_ptr, name_len);
   const value = getString(value_ptr, value_len);
   node[attribute_name] = value;
-};
+}
 
-const elementGetAttribute = function (
+function writeU32ToMemory(memory, address, value) {
+  const mem_result_address = new DataView(memory.buffer, address, 4);
+  mem_result_address.setUint32(0, value, true);
+}
+
+function elementGetAttribute(
   node_id,
   name_ptr,
   name_len,
@@ -44,7 +56,7 @@ const elementGetAttribute = function (
   // convert result into Uint8Array
   const textEncoder = new TextEncoder();
   const resultArray = textEncoder.encode(result);
-  var len = resultArray.length;
+  const len = resultArray.length;
 
   if (len === 0) {
     return false;
@@ -56,58 +68,41 @@ const elementGetAttribute = function (
     throw 'Cannot allocate memory';
   }
 
-  // write the array to the memory
-  const mem_result = new DataView(zigdom.exports.memory.buffer, ptr, len);
-  for (let i = 0; i < len; ++i) {
-    mem_result.setUint8(i, resultArray[i], true);
-  }
+  const uint8array = new Uint8Array(zigdom.exports.memory.buffer);
+  uint8array.set(resultArray, ptr);
 
   // write the address of the result array to result_address_ptr
-  const mem_result_address = new DataView(
-    zigdom.exports.memory.buffer,
-    result_address_ptr,
-    32 / 8,
-  );
-  mem_result_address.setUint32(0, ptr, true);
+  writeU32ToMemory(zigdom.exports.memory, result_address_ptr, ptr);
 
-  //write the size of the result array to result_address_ptr_len_ptr
-  const mem_result_address_len = new DataView(
-    zigdom.exports.memory.buffer,
-    result_address_len_ptr,
-    32 / 8,
-  );
-  mem_result_address_len.setUint32(0, len, true);
+  // write the size of the result array to result_address_ptr_len_ptr
+  writeU32ToMemory(zigdom.exports.memory, result_address_len_ptr, len);
 
   // return if success? (optional)
   return true;
-};
-const eventTargetAddEventListener = function (
-  objId,
-  event_ptr,
-  event_len,
-  eventId,
-) {
+}
+
+function eventTargetAddEventListener(objId, event_ptr, event_len, eventId) {
   const node = getObject(objId);
   const ev = getString(event_ptr, event_len);
   node.addEventListener(ev, dispatch(eventId));
-};
+}
 
-const documentQuerySelector = function (selector_ptr, selector_len) {
+function documentQuerySelector(selector_ptr, selector_len) {
   const selector = getString(selector_ptr, selector_len);
   return pushObject(document.querySelector(selector));
-};
+}
 
-const documentCreateElement = function (tag_name_ptr, tag_name_len) {
+function documentCreateElement(tag_name_ptr, tag_name_len) {
   const tag_name = getString(tag_name_ptr, tag_name_len);
   return pushObject(document.createElement(tag_name));
-};
+}
 
-const documentCreateTextNode = function (data_ptr, data_len) {
-  data = getString(data_ptr, data_len);
+function documentCreateTextNode(data_ptr, data_len) {
+  const data = getString(data_ptr, data_len);
   return pushObject(document.createTextNode(data));
-};
+}
 
-const nodeAppendChild = function (node_id, child_id) {
+function nodeAppendChild(node_id, child_id) {
   const node = getObject(node_id);
   const child = getObject(child_id);
 
@@ -116,49 +111,61 @@ const nodeAppendChild = function (node_id, child_id) {
   }
 
   return pushObject(node.appendChild(child));
-};
+}
 
-const windowAlert = function (msg_ptr, msg_len) {
+function windowAlert(msg_ptr, msg_len) {
   const msg = getString(msg_ptr, msg_len);
+  // console.log('>', msg);
   alert(msg);
-};
+}
 
-const zigReleaseObject = function (object_id) {
+function zigReleaseObject(object_id) {
   zigdom.objects[object_id - 1] = undefined;
-};
+}
 
-const launch = function (result) {
-  zigdom.exports = result.instance.exports;
+function launch(wasmInstance) {
+  zigdom.exports = wasmInstance.instance.exports;
+
   if (!zigdom.exports.launch_export()) {
     throw 'Launch Error';
   }
+}
+
+const wasmImports = {
+  document: {
+    query_selector: documentQuerySelector,
+    create_element: documentCreateElement,
+    create_text_node: documentCreateTextNode,
+  },
+  element: {
+    set_attribute: elementSetAttribute,
+    get_attribute: elementGetAttribute,
+  },
+  event_target: {
+    add_event_listener: eventTargetAddEventListener,
+  },
+  node: {
+    append_child: nodeAppendChild,
+  },
+  window: {
+    alert: windowAlert,
+  },
+  zig: {
+    release_object: zigReleaseObject,
+  },
 };
 
-const zigdom = {
-  objects: [],
-  imports: {
-    document: {
-      query_selector: documentQuerySelector,
-      create_element: documentCreateElement,
-      create_text_node: documentCreateTextNode,
-    },
-    element: {
-      set_attribute: elementSetAttribute,
-      get_attribute: elementGetAttribute,
-    },
-    event_target: {
-      add_event_listener: eventTargetAddEventListener,
-    },
-    node: {
-      append_child: nodeAppendChild,
-    },
-    window: {
-      alert: windowAlert,
-    },
-    zig: {
-      release_object: zigReleaseObject,
-    },
-  },
-  launch,
-  exports: undefined,
-};
+async function run() {
+  const response = await fetch('zig-out/bin/zigdom.wasm');
+
+  if (!response.ok) {
+    throw new Error("wasm file can't be loaded");
+  }
+
+  const buffer = await response.arrayBuffer();
+  const instance = await WebAssembly.instantiate(buffer, wasmImports);
+
+  launch(instance);
+}
+
+run();

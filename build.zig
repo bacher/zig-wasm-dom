@@ -1,6 +1,7 @@
 const std = @import("std");
 
 const number_of_pages = 1;
+const max_number_of_pages = 2;
 
 pub fn build(b: *std.Build) void {
     const target = b.resolveTargetQuery(.{
@@ -23,7 +24,7 @@ pub fn build(b: *std.Build) void {
     exe.stack_size = std.wasm.page_size / 2;
 
     exe.initial_memory = std.wasm.page_size * number_of_pages;
-    exe.max_memory = std.wasm.page_size * number_of_pages;
+    exe.max_memory = std.wasm.page_size * max_number_of_pages;
 
     b.installArtifact(exe);
 }

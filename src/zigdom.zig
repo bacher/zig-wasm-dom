@@ -1,11 +1,13 @@
 // https://github.com/shritesh/zig-wasm-dom
-extern "document" fn query_selector(selector_ptr: [*]const u8, selector_len: usize) usize;
-extern "document" fn create_element(tag_name_ptr: [*]const u8, tag_name_len: usize) usize;
-extern "document" fn create_text_node(data_ptr: [*]const u8, data_len: usize) usize;
-extern "element" fn set_attribute(element_id: usize, name_ptr: [*]const u8, name_len: usize, value_ptr: [*]const u8, value_len: usize) void;
-extern "element" fn get_attribute(element_id: usize, name_ptr: [*]const u8, name_len: usize, value_ptr: *[*]u8, value_len: *usize) bool;
-extern "event_target" fn add_event_listener(event_target_id: usize, event_ptr: [*]const u8, event_len: usize, event_id: usize) void;
-extern "window" fn alert(msg_ptr: [*]const u8, msg_len: usize) void;
+const string = [*]const u8;
+
+extern "document" fn query_selector(selector_ptr: string, selector_len: usize) usize;
+extern "document" fn create_element(tag_name_ptr: string, tag_name_len: usize) usize;
+extern "document" fn create_text_node(data_ptr: string, data_len: usize) usize;
+extern "element" fn set_attribute(element_id: usize, name_ptr: string, name_len: usize, value_ptr: string, value_len: usize) void;
+extern "element" fn get_attribute(element_id: usize, name_ptr: string, name_len: usize, value_ptr: *[*]u8, value_len: *usize) bool;
+extern "event_target" fn add_event_listener(event_target_id: usize, event_ptr: string, event_len: usize, event_id: usize) void;
+extern "window" fn alert(msg_ptr: string, msg_len: usize) void;
 extern "node" fn append_child(node_id: usize, child_id: usize) usize;
 extern "zig" fn release_object(object_id: usize) void;
 
@@ -115,7 +117,7 @@ fn attach_listener(node: usize, event_name: []const u8, event_id: eventId) void 
     add_event_listener(node, event_name.ptr, event_name.len, @intFromEnum(event_id));
 }
 
-export fn dispatchEvent(id: u32) void {
+export fn dispatch_event(id: u32) void {
     const e: eventId = @enumFromInt(id);
     switch (e) {
         eventId.Submit => on_submit_event(),
