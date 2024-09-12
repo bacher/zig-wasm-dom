@@ -112,11 +112,12 @@ fn launch() !void {
 }
 
 fn attach_listener(node: usize, event_name: []const u8, event_id: eventId) void {
-    add_event_listener(node, event_name.ptr, event_name.len, @enumToInt(event_id));
+    add_event_listener(node, event_name.ptr, event_name.len, @intFromEnum(event_id));
 }
 
 export fn dispatchEvent(id: u32) void {
-    switch (@intToEnum(eventId, id)) {
+    const e: eventId = @enumFromInt(id);
+    switch (e) {
         eventId.Submit => on_submit_event(),
         eventId.Clear => on_clear_event(),
     }
@@ -151,8 +152,8 @@ export fn launch_export() bool {
 }
 
 export fn _wasm_alloc(len: usize) u32 {
-    var buf = std.heap.page_allocator.alloc(u8, len) catch {
+    const buf = std.heap.page_allocator.alloc(u8, len) catch {
         return 0;
     };
-    return @ptrToInt(buf.ptr);
+    return @intFromPtr(buf.ptr);
 }

@@ -1,29 +1,29 @@
-const getString = function(ptr, len) {
+const getString = function (ptr, len) {
   const slice = zigdom.exports.memory.buffer.slice(ptr, ptr + len);
   const textDecoder = new TextDecoder();
   return textDecoder.decode(slice);
 };
 
-const pushObject = function(object) {
+const pushObject = function (object) {
   return zigdom.objects.push(object);
 };
 
-const getObject = function(objId) {
+const getObject = function (objId) {
   return zigdom.objects[objId - 1];
 };
 
-const dispatch = function(eventId) {
-  return function() {
+const dispatch = function (eventId) {
+  return function () {
     zigdom.exports.dispatchEvent(eventId);
   };
 };
 
-const elementSetAttribute = function(
+const elementSetAttribute = function (
   node_id,
   name_ptr,
   name_len,
   value_ptr,
-  value_len
+  value_len,
 ) {
   const node = getObject(node_id);
   const attribute_name = getString(name_ptr, name_len);
@@ -31,12 +31,12 @@ const elementSetAttribute = function(
   node[attribute_name] = value;
 };
 
-const elementGetAttribute = function(
+const elementGetAttribute = function (
   node_id,
   name_ptr,
   name_len,
   result_address_ptr,
-  result_address_len_ptr
+  result_address_len_ptr,
 ) {
   const node = getObject(node_id);
   const attribute_name = getString(name_ptr, name_len);
@@ -53,7 +53,7 @@ const elementGetAttribute = function(
   // allocate required number of bytes
   const ptr = zigdom.exports._wasm_alloc(len);
   if (ptr === 0) {
-    throw "Cannot allocate memory";
+    throw 'Cannot allocate memory';
   }
 
   // write the array to the memory
@@ -66,7 +66,7 @@ const elementGetAttribute = function(
   const mem_result_address = new DataView(
     zigdom.exports.memory.buffer,
     result_address_ptr,
-    32 / 8
+    32 / 8,
   );
   mem_result_address.setUint32(0, ptr, true);
 
@@ -74,40 +74,40 @@ const elementGetAttribute = function(
   const mem_result_address_len = new DataView(
     zigdom.exports.memory.buffer,
     result_address_len_ptr,
-    32 / 8
+    32 / 8,
   );
   mem_result_address_len.setUint32(0, len, true);
 
   // return if success? (optional)
   return true;
 };
-const eventTargetAddEventListener = function(
+const eventTargetAddEventListener = function (
   objId,
   event_ptr,
   event_len,
-  eventId
+  eventId,
 ) {
   const node = getObject(objId);
   const ev = getString(event_ptr, event_len);
   node.addEventListener(ev, dispatch(eventId));
 };
 
-const documentQuerySelector = function(selector_ptr, selector_len) {
+const documentQuerySelector = function (selector_ptr, selector_len) {
   const selector = getString(selector_ptr, selector_len);
   return pushObject(document.querySelector(selector));
 };
 
-const documentCreateElement = function(tag_name_ptr, tag_name_len) {
+const documentCreateElement = function (tag_name_ptr, tag_name_len) {
   const tag_name = getString(tag_name_ptr, tag_name_len);
   return pushObject(document.createElement(tag_name));
 };
 
-const documentCreateTextNode = function(data_ptr, data_len) {
+const documentCreateTextNode = function (data_ptr, data_len) {
   data = getString(data_ptr, data_len);
   return pushObject(document.createTextNode(data));
 };
 
-const nodeAppendChild = function(node_id, child_id) {
+const nodeAppendChild = function (node_id, child_id) {
   const node = getObject(node_id);
   const child = getObject(child_id);
 
@@ -118,47 +118,47 @@ const nodeAppendChild = function(node_id, child_id) {
   return pushObject(node.appendChild(child));
 };
 
-const windowAlert = function(msg_ptr, msg_len) {
+const windowAlert = function (msg_ptr, msg_len) {
   const msg = getString(msg_ptr, msg_len);
   alert(msg);
 };
 
-const zigReleaseObject = function(object_id) {
+const zigReleaseObject = function (object_id) {
   zigdom.objects[object_id - 1] = undefined;
 };
 
-const launch = function(result) {
+const launch = function (result) {
   zigdom.exports = result.instance.exports;
   if (!zigdom.exports.launch_export()) {
-    throw "Launch Error";
+    throw 'Launch Error';
   }
 };
 
-var zigdom = {
+const zigdom = {
   objects: [],
   imports: {
     document: {
       query_selector: documentQuerySelector,
       create_element: documentCreateElement,
-      create_text_node: documentCreateTextNode
+      create_text_node: documentCreateTextNode,
     },
     element: {
       set_attribute: elementSetAttribute,
-      get_attribute: elementGetAttribute
+      get_attribute: elementGetAttribute,
     },
     event_target: {
-      add_event_listener: eventTargetAddEventListener
+      add_event_listener: eventTargetAddEventListener,
     },
     node: {
-      append_child: nodeAppendChild
+      append_child: nodeAppendChild,
     },
     window: {
-      alert: windowAlert
+      alert: windowAlert,
     },
     zig: {
-      release_object: zigReleaseObject
-    }
+      release_object: zigReleaseObject,
+    },
   },
-  launch: launch,
-  exports: undefined
+  launch,
+  exports: undefined,
 };
